@@ -1,0 +1,162 @@
+/* ── Vintage suitcase record player ── */
+
+.vintage-record-player {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.vintage-record-player audio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+}
+
+/*
+ * The artboard is the entire player UI — it is also a <button> so
+ * the whole record player is clickable to toggle play/pause.
+ *
+ * Width constraint keeps the correct 1080:1350 aspect ratio while
+ * never exceeding (viewport-height − small gutter) in height.
+ */
+.vintage-record-player__artboard {
+  /* layout */
+  position: relative;
+  display: block;
+  width: min(100%, 500px, calc((100svh - 4rem) * 0.8));
+  aspect-ratio: 1080 / 1350;
+
+  /* visuals */
+  background: #0a0a0a;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 24px 48px rgba(73, 31, 0, 0.28);
+
+  /* reset <button> chrome */
+  border: none;
+  padding: 0;
+  cursor: default;
+}
+
+.vintage-record-player__artboard.is-playable {
+  cursor: pointer;
+}
+
+.vintage-record-player__artboard.is-playable:focus-visible {
+  outline: 3px solid rgba(243, 238, 215, 0.75);
+  outline-offset: 4px;
+}
+
+/* ── base illustration ── */
+
+.vintage-record-player__art {
+  display: block;
+  user-select: none;
+  pointer-events: none;
+}
+
+.vintage-record-player__art--base {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* ── spinning vinyl layer ──────────────────────────────────────────────────
+ *
+ * clip-path: circle() masks the layer to just the vinyl record.
+ * Because clip center == transform-origin, the circular window stays
+ * fixed on screen while the image texture inside it rotates.
+ *
+ * Vinyl center (pixel-measured from PNG): 39% x, 63% y of the 1080×1350 image.
+ * Radius 24% (≈ 27% of artboard width — covers the main grooved area).
+ */
+.vintage-record-player__vinyl-spin {
+  position: absolute;
+  inset: 0;
+  clip-path: circle(24% at 39% 63%);
+  transform-origin: 39% 63%;
+  will-change: transform;
+  z-index: 1;
+}
+
+/* Ambient: pure CSS animation — runs whenever no audio is loaded */
+.vintage-record-player__vinyl-spin.is-ambient {
+  animation: vinyl-ambient-spin 8s linear infinite;
+}
+
+/* Audio loaded + playing: rAF drives transform; animation is a no-op fallback */
+.vintage-record-player__vinyl-spin.is-playing {
+  animation: none;
+}
+
+/* Audio loaded but paused: hold the last rAF transform, no animation */
+.vintage-record-player__vinyl-spin.is-paused {
+  animation: none;
+}
+
+@keyframes vinyl-ambient-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vintage-record-player__vinyl-spin.is-ambient {
+    animation: none;
+  }
+}
+
+.vintage-record-player__art--clone {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* ── play icon overlay — always visible until user clicks ── */
+
+.vintage-record-player__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.12);
+  opacity: 1;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
+/* hide after user starts spinning */
+.vintage-record-player__overlay.is-hidden {
+  opacity: 0;
+}
+
+.vintage-record-player__artboard:hover .vintage-record-player__overlay.is-hidden {
+  /* subtle re-appear on hover so user knows it's clickable */
+  opacity: 0.55;
+}
+
+.vintage-record-player__overlay svg {
+  width: 4rem;
+  height: 4rem;
+  fill: rgba(243, 238, 215, 0.95);
+  filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.65));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vintage-record-player__overlay {
+    transition: none;
+  }
+}
