@@ -25,31 +25,27 @@
  * never exceeding (viewport-height − small gutter) in height.
  */
 .vintage-record-player__artboard {
-  /* layout */
+  /* layout — matches Crosley JPEG aspect (867 × 1024) */
   position: relative;
   display: block;
-  width: min(100%, 500px, calc((100svh - 4rem) * 0.8));
-  aspect-ratio: 1080 / 1350;
+  width: min(100%, 520px, calc((100svh - 4rem) * (867 / 1024)));
+  aspect-ratio: 867 / 1024;
 
-  /* visuals */
-  background: #0a0a0a;
+  /* visuals — show the cream paper background of the Crosley illustration */
+  background: #f0e6cf;
   border-radius: 16px;
   overflow: hidden;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 24px 48px rgba(73, 31, 0, 0.28);
+    0 0 0 1px rgba(73, 31, 0, 0.08),
+    0 24px 48px rgba(73, 31, 0, 0.18);
 
   /* reset <button> chrome */
   border: none;
   padding: 0;
-  cursor: default;
-}
-
-.vintage-record-player__artboard.is-playable {
   cursor: pointer;
 }
 
-.vintage-record-player__artboard.is-playable:focus-visible {
+.vintage-record-player__artboard:focus-visible {
   outline: 3px solid rgba(243, 238, 215, 0.75);
   outline-offset: 4px;
 }
@@ -70,57 +66,75 @@
   object-fit: contain;
 }
 
-/* ── spinning vinyl layer ──────────────────────────────────────────────────
+/* ── Spinning vinyl ────────────────────────────────────────────────────────
  *
- * clip-path: circle() masks the layer to just the vinyl record.
- * Because clip center == transform-origin, the circular window stays
- * fixed on screen while the image texture inside it rotates.
+ * Three nested layers — each with a single, isolated job:
  *
- * Vinyl center (pixel-measured from PNG): 39% x, 63% y of the 1080×1350 image.
- * Radius 24% (≈ 27% of artboard width — covers the main grooved area).
+ *   .vinyl-window   – fixed oval mask anchored at the spindle.
+ *                     Owns the perspective squash (scaleY(0.36)) and the
+ *                     elliptical clip (border-radius:50% + overflow:hidden).
+ *                     Never rotates.
+ *
+ *   .vinyl-rotator  – square child filling the window.
+ *                     Owns ONLY the rotation animation.  Because the squash
+ *                     lives on the parent, the rotate() transform here is
+ *                     applied in clean, un-skewed local coordinates — so the
+ *                     spin stays a true rotation, not a wobble.
+ *
+ *   .vinyl-disk     – the PNG itself, sized to fill the rotator.  No
+ *                     transforms, no clip-path — the window already clips.
+ *
+ * Coordinates measured from the Crosley illustration (867×1024):
+ *   spindle center: 34% x, 62.5% y
+ *   visible vinyl ellipse: ~58% wide × ~21% tall
+ *   → scaleY(0.36) on a circular disk → matches the perspective oval
  */
-.vintage-record-player__vinyl-spin {
+.vintage-record-player__vinyl-window {
   position: absolute;
-  inset: 0;
-  clip-path: circle(24% at 39% 63%);
-  transform-origin: 39% 63%;
-  will-change: transform;
+  left: 34%;
+  top: 62.5%;
+  width: 64%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) scaleY(0.36);
+  border-radius: 50%;
+  overflow: hidden;
   z-index: 1;
+  pointer-events: none;
+  /* soft shadow on the deck so it doesn't look pasted on */
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
 }
 
-/* Ambient: pure CSS animation — runs whenever no audio is loaded */
-.vintage-record-player__vinyl-spin.is-ambient {
-  animation: vinyl-ambient-spin 8s linear infinite;
-}
-
-/* Audio loaded + playing: rAF drives transform; animation is a no-op fallback */
-.vintage-record-player__vinyl-spin.is-playing {
-  animation: none;
-}
-
-/* Audio loaded but paused: hold the last rAF transform, no animation */
-.vintage-record-player__vinyl-spin.is-paused {
-  animation: none;
-}
-
-@keyframes vinyl-ambient-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .vintage-record-player__vinyl-spin.is-ambient {
-    animation: none;
-  }
-}
-
-.vintage-record-player__art--clone {
-  position: absolute;
-  inset: 0;
+/* ── The chain ─────────────────────────────────────────────────────────────
+ * 1. User clicks the player              → React onClick fires
+ * 2. React toggles `is-spinning` class   → rotator gets `.is-spinning`
+ * 3. CSS switches animation-play-state   → paused → running
+ * 4. The `spin` @keyframes animates      → 0deg → 360deg, clockwise
+ */
+.vintage-record-player__vinyl-rotator {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  transform-origin: 50% 50%;
+  animation: spin 3s linear infinite;
+  animation-play-state: paused;
+  will-change: transform;
+}
+
+.vintage-record-player__vinyl-rotator.is-spinning {
+  animation-play-state: running;
+}
+
+.vintage-record-player__vinyl-disk {
   display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  user-select: none;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
 }
 
 /* ── play icon overlay — always visible until user clicks ── */
